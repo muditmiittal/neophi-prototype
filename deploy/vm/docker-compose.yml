@@ -1,0 +1,37 @@
+# Public host for Neophi: Caddy (automatic HTTPS) in front of the Node server. Run from this folder:  docker compose up -d --build
+# Secrets live in .env next to this file (chmod 600); they are never in the image or the repository.
+services:
+  neophi:
+    build:
+      context: ../..
+      dockerfile: deploy/vm/Dockerfile
+    restart: unless-stopped
+    environment:
+      NEOPHI_HOST: 0.0.0.0
+      PORT: "8787"
+      NEOPHI_DATA: /data
+      META_VERIFY_TOKEN: ${META_VERIFY_TOKEN}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      NEOPHI_RELAY_TOKEN: ${NEOPHI_RELAY_TOKEN}
+      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+      META_AUTO_REPLY: ${META_AUTO_REPLY:-0}
+    volumes:
+      - neophi-data:/data
+    expose:
+      - "8787"
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_HOST: ${SITE_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - neophi
+volumes:
+  neophi-data:
+  caddy-data:
