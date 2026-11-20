@@ -10,6 +10,7 @@ import { draftToMarkdown, type Draft } from '../lib/outcomes';
 import { morphTo } from '../lib/morph';
 import { fmtDate, reasonOf } from '../lib/reason';
 import { analyseMemory, moveMemory } from '../store/store';
+import { hasReelCover, ReelMedia } from './ReelMedia';
 import type { Category, Memory, Project } from '../store/types';
 
 export const ToastContext = createContext<(text: string) => void>(() => undefined);
@@ -57,26 +58,27 @@ export function Thumb({ m }: { m: Memory }) {
 }
 
 export function MemoryCard({ m, categories, projects, view }: { m: Memory; categories: Category[]; projects: Project[]; view: 'grid' | 'list' }) {
+  const reel = view === 'grid' && hasReelCover(m);
   const cat = categories.find((c) => c.id === m.categoryId);
   const navigate = useNavigate();
   const toast = useToast();
   return (
     <article
-      className={`mcard mcard-${view}${m.status !== 'ready' ? ' is-busy' : ''}`}
+      className={`mcard mcard-${view}${reel ? ' mcard-reel' : ''}${m.status !== 'ready' ? ' is-busy' : ''}`}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('text/neophi-memory', m.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
     >
-      <Link to={`/app/m/${m.id}`} className="mcard-pic polaroid" aria-label={`Open ${m.title}`} onClick={(e) => morphTo(e, navigate, `/app/m/${m.id}`)}>
+      {reel ? <ReelMedia memory={m} /> : <Link to={`/app/m/${m.id}`} className="mcard-pic polaroid" aria-label={`Open ${m.title}`} onClick={(e) => morphTo(e, navigate, `/app/m/${m.id}`)}>
         <Thumb m={m} />
         {m.mediaKind === 'video' && (m.thumb || (m.sceneId && m.sceneId !== 'none')) && (
           <span className="mcard-play" aria-hidden="true">
             <Icon name="play" />
           </span>
         )}
-      </Link>
+      </Link>}
       <div className="mcard-body">
         <h3>
           <Link to={`/app/m/${m.id}`}>{m.title}</Link>

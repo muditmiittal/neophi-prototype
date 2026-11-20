@@ -414,12 +414,12 @@
 
 .mgrid-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 26px 20px;
 }
 @media (max-width: 520px) {
   .mgrid-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 22px 14px;
   }
 }
@@ -1455,3 +1455,82 @@
 
 .instagram-preview { margin-block: 0.75rem; }
 .instagram-preview iframe { display: block; width: 100%; max-width: 28rem; height: 32rem; border: 0; margin-block-start: 0.5rem; }
+
+/* Reel covers use original sample art, a saved frame, or a neutral source tile. */
+.reel-media { position: relative; min-width: 0; }
+.reel-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: var(--r-m);
+  color: #fff;
+  text-decoration: none;
+  background:
+    repeating-linear-gradient(132deg, transparent 0 14px, rgb(255 255 255 / .09) 14px 15px),
+    linear-gradient(145deg, #9537a1 0%, #6238a3 48%, #22204f 100%);
+}
+.reel-cover:visited { color: #fff; }
+.reel-cover > .scene, .reel-cover > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.reel-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgb(18 13 32 / .28), transparent 32% 64%, rgb(18 13 32 / .72));
+}
+.reel-source, .reel-cover-status {
+  position: absolute;
+  left: 12px;
+  background: #261a44;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 650;
+}
+.reel-source { top: 12px; }
+.reel-cover-status { bottom: 12px; }
+.reel-open {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #261a44;
+  color: #fff;
+  font-size: 1.2rem;
+}
+.reel-cover:hover .reel-open { background: #542e81; }
+.instagram-preview-tile { margin: 0; }
+.instagram-preview-tile > .btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: .82rem;
+  background: var(--card);
+  color: var(--ink);
+}
+.instagram-preview-tile.is-open > .btn { position: static; margin-block-start: 8px; }
+.instagram-preview-tile iframe { width: 100%; max-width: none; }
+.mcard-reel { padding: 12px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-m); }
+.mcard-reel .reason-said, .today-words {
+  padding: 10px 12px;
+  border-inline-start: 2px solid var(--line-strong);
+  background: var(--paper);
+  white-space: pre-wrap;
+}
+.today-words { display: grid; gap: 5px; }
+.today-words .label { margin: 0; }
