@@ -23,23 +23,8 @@ import {
   useStore,
 } from '../store/store';
 import { INTENT_CHIPS } from '../store/types';
+import { InstagramPreview } from './ReelMedia';
 import { ConfirmButton, DraftView, EmptyState, PLATFORM_LABEL, useToast } from './ui';
-
-function InstagramPreview({ url }: { url: string }) {
-  const [open, setOpen] = useState(false);
-  const source = URL.canParse(url) ? new URL(url) : null;
-  if (source?.protocol !== 'https:' || !['instagram.com', 'www.instagram.com'].includes(source.hostname)) return null;
-  const post = /^\/(reel|p)\/([\w-]+)\/?$/.exec(source.pathname);
-  if (!post) return null;
-  return (
-    <div className="instagram-preview">
-      <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {open ? 'Close Instagram preview' : 'Preview on Instagram'}
-      </button>
-      {open && <iframe title="Instagram preview" src={`https://www.instagram.com/${post[1]}/${post[2]}/embed/`} referrerPolicy="no-referrer" loading="lazy" />}
-    </div>
-  );
-}
 
 function nextFriday(): Date {
   const d = new Date();
