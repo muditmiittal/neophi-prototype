@@ -6,4 +6,6 @@ The NeoPhi parent Meta app and relay now accept signed Instagram DMs. A real Ree
 
 First verify public HTTPS reachability and, if provisioned, Tailscale reachability from this actual Cloud task. Read only health counters and redacted diagnostic output. Any SSH write, credential change, service restart, IAM change or deployment requires the owner to approve the specific action. Never request secret values in chat. Use the access manifest to tell the owner what needs provisioning.
 
+The owner added Meta's developer-tools MCP as `FB`. Check its visibility and authentication from this Cloud task. If available, use read-only discovery to verify applicable NeoPhi app capabilities. Report any connector gap before asking the owner to change OAuth or networking.
+
 Then integrate the best existing pieces from both repos. Cover capture, video and note association, honest AI evidence, inbox and the core user flows on mobile and desktop. Keep local demos runnable with fallback. Propose how to move the consumer and inference to an always-on backend without competing relay consumers. Finish with checks, actual test counts, any blocked live acceptance criteria, and a short demo runbook. Do not claim the real video or AI stages passed until evidence shows they did.

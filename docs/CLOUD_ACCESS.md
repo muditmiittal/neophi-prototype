@@ -6,6 +6,7 @@
 | Partner source | `Ramitphi/neophii`, `main` | Public comparison source. Ask Ramit for the intended integration branch and any unpublished changes. |
 | Dependency install | npm registry | Enable the environment's package-manager network preset or existing equivalent. Run `npm ci`. |
 | Public relay check | `20-219-13-184.sslip.io`, HTTPS 443 | Add exactly this hostname if needed. Test `/api/health` from Cloud. A public health result does not grant relay or VM administration. |
+| Meta developer tools MCP | Owner-added connection `FB`, official endpoint `https://mcp.facebook.com/devtools` | Verify the tool list and a documented read-only operation in the actual Cloud task. Authenticate through Meta OAuth if prompted. Approve only the intended app/assets and approve any writes separately. [Meta connection guide](https://developers.facebook.com/documentation/mcp/connect-an-mcp-client) |
 | Private VM access | `epitomeworkstation.tail1ec3ca.ts.net`, Tailscale SSH | If Cloud VPN is available, the owner provides its Tailscale auth key in the environment UI and verifies the ACL permits only the intended host and operations. The existing Windows approval is local. |
 | Meta webhook challenge | `META_VERIFY_TOKEN` on relay | Owner pairs with the selected app's callback verification field. |
 | Meta webhook HMAC | `META_APP_SECRET` on relay | Owner or Claude Code provisions the selected app's App secret. Current app is NeoPhi parent 1481320687243886. |
