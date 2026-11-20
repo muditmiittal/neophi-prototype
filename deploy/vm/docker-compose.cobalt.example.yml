@@ -1,0 +1,15 @@
+# EXPERIMENTAL and not used by default. Read 09_COBALT.md (package root) first (policy and Meta-review risk; never configure cookies).
+# Use on a machine that is NOT the public webhook host the Meta app points at, or accept that risk knowingly.
+# Run as an override:  docker compose -f docker-compose.yml -f docker-compose.cobalt.example.yml up -d
+services:
+  cobalt:
+    image: ghcr.io/imputnet/cobalt:11
+    restart: unless-stopped
+    read_only: true
+    environment:
+      API_URL: http://cobalt:9000/
+    expose:
+      - "9000"      # internal only: never publish this port
+  neophi:
+    environment:
+      NEOPHI_COBALT_URL: http://cobalt:9000

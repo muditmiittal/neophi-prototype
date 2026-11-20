@@ -1,0 +1,11 @@
+node_modules
+dist-ssr
+data
+tests
+src
+scripts
+docs
+SCREENSHOTS
+.agents
+*.md
+.env*

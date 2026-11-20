@@ -1,0 +1,11 @@
+# Copy into a new Codex Cloud task
+
+Continue the Neophi buildathon in the existing `epitomeMaster` Cloud environment. Work on `muditmiittal/neophi-prototype` branch `buildathon-prototype`. The private repo's `main` branch is a bootstrap README. Read `AGENTS.md`, `docs/CLOUD_HANDOFF.md`, `docs/CLOUD_ACCESS.md`, `docs/META_CAPTURE.md` and the project skills first. Compare with Ramit's public `Ramitphi/neophii` branch `main`. Record both commit IDs. Check with us for any unpublished partner changes before integrating. Work on a branch and update or open the agreed draft PR. Do not merge, deploy or change a live database.
+
+The NeoPhi parent Meta app and relay now accept signed Instagram DMs. A real Reel produced one capture and the laptop pulled it. Instagram supplied an HTML page under `www.instagram.com` for that share, so no video bytes were downloaded. Vertex rejected a synthetic inference with HTTP 403. Finish the pipeline by proving a supported way to retrieve authorized video, preserving the user's exact reason, validating analysis with the media attached, and confirming that caption-plus-note fallback is clear. Use synthetic fixtures until live access is approved.
+
+First verify public HTTPS reachability and, if provisioned, Tailscale reachability from this actual Cloud task. Read only health counters and redacted diagnostic output. Any SSH write, credential change, service restart, IAM change or deployment requires the owner to approve the specific action. Never request secret values in chat. Use the access manifest to tell the owner what needs provisioning.
+
+The owner added Meta's developer-tools MCP as `FB`. Check its visibility and authentication from this Cloud task. If available, use read-only discovery to verify applicable NeoPhi app capabilities. Report any connector gap before asking the owner to change OAuth or networking.
+
+Then integrate the best existing pieces from both repos. Cover capture, video and note association, honest AI evidence, inbox and the core user flows on mobile and desktop. Keep local demos runnable with fallback. Propose how to move the consumer and inference to an always-on backend without competing relay consumers. Finish with checks, actual test counts, any blocked live acceptance criteria, and a short demo runbook. Do not claim the real video or AI stages passed until evidence shows they did.

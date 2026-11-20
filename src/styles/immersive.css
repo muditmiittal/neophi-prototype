@@ -1,0 +1,125 @@
+/* Immersive public site: every part of a page is one screen with its own looping video, snapping into place.
+   Light theme shows the videos. Dark theme (toggled) shows the 3D spiral behind the paper panels; the two night panels keep their video. */
+
+html:has(.pf-main) {
+  scroll-snap-type: y proximity;
+  scroll-padding-top: 64px;
+}
+html, body { overflow-x: clip; }
+
+.pf-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 64px);
+  box-sizing: border-box;
+  scroll-snap-align: start;
+}
+.pf-panel-in { width: 100%; box-sizing: border-box; padding-block: clamp(24px, 4vw, 56px); }
+.pf-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+  background: var(--paper-deep);
+}
+.pf-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+}
+/* the original section looks (flat bands) give way to the video behind them */
+.pf-panel.steps, .pf-panel.reason-demo, .pf-panel.measured-strip, .pf-panel.trust-band, .pf-panel.ladder-sec, .pf-panel.closing, .pf-panel.hero { background: none; border: 0; }
+.pf-panel.reason-demo { padding-inline: 0; max-width: none; margin-inline: 0; }
+.pf-panel.trust-band .pf-shade { background: color-mix(in srgb, var(--paper) 68%, transparent); }
+
+/* night panels: dark whatever the theme, bold white type */
+.pf-night {
+  --paper: #14110d; --paper-deep: #0e0c09; --card: #211c16; --ink: #f6efe0; --ink-soft: #e3dac6; --muted: #c3b9a4;
+  --line: #4a4236; --line-strong: #6a5f4d; --vermilion: #ff8466; --vermilion-vivid: #ff6a47; --on-vermilion: #1b0d08;
+  --teal: #6fd0c7; --teal-wash: #16302e; --vermilion-wash: #3a2019;
+  color: var(--ink);
+}
+.pf-night .pf-shade { background: linear-gradient(180deg, rgb(8 7 5 / 0.38), rgb(8 7 5 / 0.62)); }
+
+/* hero */
+.pf-hero-panel { min-height: calc(100svh - 64px); }
+.pf-hero-words { display: grid; gap: 18px; max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); }
+.pf-hero-words h1 { display: grid; gap: 0.06em; margin: 0; font-family: var(--display); font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; }
+.pf-line { display: block; }
+.pf-line.pf-small { font-style: italic; font-weight: 400; font-size: clamp(18px, 2.6vw, 30px); letter-spacing: 0; color: var(--ink-soft); }
+.pf-line.pf-big { font-size: clamp(46px, 10vw, 132px); line-height: 0.95; text-transform: uppercase; color: var(--ink); }
+.pf-line.pf-accent { font-size: clamp(40px, 8.4vw, 112px); line-height: 1; text-transform: uppercase; color: var(--vermilion-vivid); }
+.pf-hero-sub { max-width: 46ch; margin: 6px 0 0; font-size: clamp(16px, 1.7vw, 20px); color: var(--ink-soft); }
+.pf-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 0; }
+.pf-ghost { background: rgb(255 255 255 / 0.08); color: var(--ink); border-color: rgb(255 255 255 / 0.5); }
+
+/* scroll cue */
+.pf-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 2;
+  color: var(--ink-soft);
+  font: 600 11px/1 var(--ui);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 10px 12px 22px;
+}
+.pf-cue::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateX(-50%) rotate(45deg);
+  animation: pf-bob 1.8s ease-in-out infinite;
+}
+@keyframes pf-bob { 50% { transform: translateX(-50%) translateY(6px) rotate(45deg); } }
+
+/* inner pages: the title screen */
+.page.wrap { width: 100%; max-width: none; margin: 0; padding: 0 0 56px; }
+.page.wrap > .page-head:not(.pf-intro) { padding-top: 36px; }
+.page.wrap > :not(.pf-intro) { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); box-sizing: border-box; }
+.pf-intro { width: 100%; margin: 0; padding: 0; }
+.pf-intro .pf-shade { background: color-mix(in srgb, var(--paper) 70%, transparent); }
+.pf-intro-in { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); display: grid; gap: 14px; justify-items: start; }
+.pf-intro h1 { font-size: clamp(38px, 7vw, 88px); line-height: 1; margin: 0; text-wrap: balance; }
+.pf-intro p { max-width: 52ch; font-size: clamp(16px, 1.8vw, 21px); }
+.pf-after { display: block; height: 0; scroll-margin-top: 64px; }
+
+/* the same rhythm on the rest of the home page: each part is a screen */
+body main > section:not(.pf-panel):not(.demo-host) { scroll-snap-align: start; }
+
+/* dark theme with the 3D spiral: paper panels let the spiral show instead of their video */
+[data-spiral-on] main, [data-spiral-on] .site-foot { position: relative; z-index: 1; }
+[data-spiral-on] .pf-paper .pf-video, [data-spiral-on] .pf-intro .pf-video { opacity: 0; }
+[data-spiral-on] .pf-paper .pf-shade, [data-spiral-on] .pf-intro .pf-shade { background: color-mix(in srgb, var(--paper) 38%, transparent); }
+[data-spiral-on] .site-head { z-index: 50; background: color-mix(in srgb, var(--paper) 70%, transparent); backdrop-filter: blur(8px); }
+.spiral-pause {
+  position: fixed; left: 14px; bottom: 14px; z-index: 60; padding: 8px 12px;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 80%, transparent); color: var(--ink-soft);
+  font: 600 11px/1 var(--ui); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+}
+.spiral-pause:hover { border-color: var(--vermilion-vivid); color: var(--ink); }
+
+@media (max-width: 720px) {
+  .pf-panel { min-height: calc(100svh - 56px); }
+  .pf-hero-words { gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.pf-main) { scroll-snap-type: none; }
+  .pf-cue::after { animation: none; }
+}
