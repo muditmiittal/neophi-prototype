@@ -94,7 +94,8 @@
   .app-bar {
     gap: 8px;
   }
-  .app-bar .brand {
+  .app-bar .brand,
+  .app-bar .palette-open {
     display: none;
   }
   .app-nav {
@@ -1438,6 +1439,7 @@
 .today-filters .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .today-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .today-card { padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-wrap: anywhere; }
+.today-card .stamp { margin-inline-start: 0.4em; }
 .today-card h3 { font-size: 1.25rem; }
 .today-note { white-space: pre-wrap; }
 .today-reason { color: var(--ink); font-weight: 600; }
