@@ -15,7 +15,9 @@
 
 ## VM operations
 
-The observed Linux host is **EpitomeWorkStation**. Existing Tailscale SSH used login `oliver` and an owner approval. The relay and proxy containers were `vm-neophi-1` and `vm-caddy-1`. When Cloud access is approved and configured, first verify host identity and list the relevant running containers. Read the relay health locally inside the container and return only counters. Avoid dumping container environments, request bodies, Instagram notes, media URLs, or credentials.
+The observed Linux host is **EpitomeWorkStation**. Existing Tailscale SSH used login `oliver` and an owner approval. The relay and proxy containers were `vm-neophi-1` and `vm-caddy-1`. The relay's Compose project working directory is `/home/oliver/neophi/deploy/vm`. When Cloud access is approved and configured, first verify host identity and list the relevant running containers. Read the relay health locally inside the container and return only counters. Avoid dumping container environments, request bodies, Instagram notes, media URLs, or credentials.
+
+For Cloud VPN setup, open **Settings → Codex Cloud → Environments → epitomeMaster → Edit → Advanced → VPN Tailscale**. The owner enters a Tailscale auth key directly in the settings field. Cloud requires a reusable, ephemeral key. Use a dedicated tag with narrowly scoped ACLs and test the route from a new Cloud task. Tailscale network reachability does not itself grant shell or write authorization. [Codex Cloud VPN setup](https://learn.chatgpt.com/docs/environments/cloud-environments#connect-to-a-private-network-with-tailscale)
 
 For a VM write, ask the owner for approval with the exact target, file or service, proposed diff, verification and rollback. Use the existing operator workflow and check the relevant checkout before applying anything. Keep relay APIs and private admin access behind their existing authentication. Do not give a Cloud environment broad or permanent root access.
 
