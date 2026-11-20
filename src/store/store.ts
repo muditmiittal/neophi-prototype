@@ -254,7 +254,7 @@ export function capture(input: CaptureInput): CaptureResult {
       entry(
         'neophi',
         input.dm.live
-          ? `Received as a live Instagram DM. ${input.dm.mediaFetch === 'ok' ? 'The shared media was downloaded by the server and read by Gemini.' : input.dm.hasMediaLink ? `It carried a media link, but the download did not work (${input.dm.mediaFetch ?? 'unknown'}), so only the caption and your note are used.` : 'It carried no media link.'}`
+          ? `Received as a live Instagram DM. ${input.dm.mediaFetch === 'ok' ? 'The server downloaded the shared media.' : input.dm.hasMediaLink ? `It carried a media link, but the download did not work (${input.dm.mediaFetch ?? 'unknown'}), so only the caption and your note are used.` : 'It carried no media link.'}`
           : `Received as an Instagram DM (a replayed sample payload, not a live message). ${input.dm.hasMediaLink ? 'It carried a media link, which was not fetched: whether it can be downloaded is still untested.' : 'It carried no media link.'}`,
         now,
       ),
@@ -329,7 +329,7 @@ export async function analyseMemory(id: string, local?: LocalImageFacts, imageDa
   };
   const extra: LedgerEntry[] = [];
   let analysis;
-  // A live Instagram DM was already read by the server (it downloaded the media), so it goes through Gemini even if the demo toggle is off.
+  // Try Gemini for live shares even when the demo uses the mock provider.
   const providerName = m.source.live || state.settings.provider === 'gemini' ? 'gemini' : 'mock';
   try {
     try {
@@ -337,7 +337,10 @@ export async function analyseMemory(id: string, local?: LocalImageFacts, imageDa
     } catch (err) {
       if (providerName !== 'gemini') throw err;
       extra.push(entry('neophi', 'The Gemini server did not answer, so the mock provider was used instead.'));
-      analysis = await getProvider('mock').analyse(input);
+      const fallbackInput = input.dmMid && input.sourceState === 'available'
+        ? { ...input, sourceState: 'unsupported' as const }
+        : input;
+      analysis = await getProvider('mock').analyse(fallbackInput);
     }
   } catch {
     patchMemory(id, (x) => ({ ...x, status: 'error', ledger: [...x.ledger, entry('neophi', 'Analysis failed. Your link and note are safe; you can try again.')] }));
@@ -347,7 +350,7 @@ export async function analyseMemory(id: string, local?: LocalImageFacts, imageDa
   if (!current) return; // deleted while analysing
   const readable = analysis.source_access_state === 'available' || analysis.source_access_state === 'user_provided';
   extra.push(
-    entry('ai', readable ? `AI described the source: ${analysis.observed_objects.length} observations, each tied to evidence or marked not sure (${analysis.provider} provider).` : 'The source was not read, so nothing about it was recorded.'),
+    entry('ai', readable ? `AI described the source: ${analysis.observed_objects.length} observations, each tied to evidence or marked not sure (${analysis.provider} provider).` : m.source.channel === 'dm' && m.source.caption ? 'Analysis used the caption and any note you sent. Shared media was unavailable for this analysis.' : 'The source was not read, so nothing about it was recorded.'),
   );
   if (analysis.inferred_possible_intents.length) extra.push(entry('ai', `AI added ${analysis.inferred_possible_intents.length} suggestion${analysis.inferred_possible_intents.length > 1 ? 's' : ''}, labelled as AI.`, undefined, 'suggestions'));
 

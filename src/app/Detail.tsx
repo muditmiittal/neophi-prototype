@@ -25,6 +25,22 @@ import {
 import { INTENT_CHIPS } from '../store/types';
 import { ConfirmButton, DraftView, EmptyState, PLATFORM_LABEL, useToast } from './ui';
 
+function InstagramPreview({ url }: { url: string }) {
+  const [open, setOpen] = useState(false);
+  const source = URL.canParse(url) ? new URL(url) : null;
+  if (source?.protocol !== 'https:' || !['instagram.com', 'www.instagram.com'].includes(source.hostname)) return null;
+  const post = /^\/(reel|p)\/([\w-]+)\/?$/.exec(source.pathname);
+  if (!post) return null;
+  return (
+    <div className="instagram-preview">
+      <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {open ? 'Close Instagram preview' : 'Preview on Instagram'}
+      </button>
+      {open && <iframe title="Instagram preview" src={`https://www.instagram.com/${post[1]}/${post[2]}/embed/`} referrerPolicy="no-referrer" loading="lazy" />}
+    </div>
+  );
+}
+
 function nextFriday(): Date {
   const d = new Date();
   d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7));
@@ -82,6 +98,7 @@ export function Detail() {
   const reason = reasonOf({ ...m, projectNames });
   const hasPic = Boolean(m.thumb) || (m.sceneId && m.sceneId !== 'none');
   const isVideo = m.mediaKind === 'video' && hasPic && (m.durationSec ?? 0) > 0;
+  const evidenceState = a?.source_access_state ?? m.sourceNow;
   const readable = a ? sourceReadable(a.source_access_state) : false;
 
   const onEvidence = (evId: string) => {
@@ -109,7 +126,7 @@ export function Detail() {
           {m.source.author && <span>{m.source.author}</span>}
           <span>Saved {fmtDate(m.createdAt)}</span>
           {m.sample && <span className="stamp">Sample</span>}
-          {m.private ? <span className="stamp stamp-warn">Private: AI off</span> : <span className={`stamp${readable && sourceReadable(m.sourceNow) ? ' stamp-teal' : ' stamp-warn'}`}>{STATE_COPY[m.sourceNow].stamp}</span>}
+          {m.private ? <span className="stamp stamp-warn">Private: AI off</span> : <span className={`stamp${readable && sourceReadable(m.sourceNow) ? ' stamp-teal' : ' stamp-warn'}`}>{STATE_COPY[evidenceState].stamp}</span>}
         </p>
         {m.source.url && (
           <p className="detail-url">
@@ -123,6 +140,7 @@ export function Detail() {
             )}
           </p>
         )}
+        {m.source.url && !m.private && !m.sample && <InstagramPreview key={m.source.url} url={m.source.url} />}
         {m.source.caption && !m.private && <p className="detail-caption">Caption: "{m.source.caption}"</p>}
       </header>
 
@@ -163,7 +181,7 @@ export function Detail() {
             }}
             active={activeEv}
             pins={features.momentPins ? m.momentPins : []}
-            gone={m.private ? 'private_memory' : hasPic ? null : m.sourceNow}
+            gone={m.private ? 'private_memory' : hasPic ? null : evidenceState}
             sample={m.sample}
           />
           {m.thumb && (
@@ -244,7 +262,7 @@ export function Detail() {
             note={m.note}
             extraNotes={m.extraNotes}
             chosenIntent={m.chosenIntent}
-            sourceNow={m.sourceNow}
+            sourceNow={evidenceState}
             isPrivate={m.private}
             suggestionsRemoved={m.suggestionsRemoved}
             analysedAt={m.analysedAt}

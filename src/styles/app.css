@@ -1447,3 +1447,6 @@
 .install-hint { max-width: 700px; margin: 20px auto 90px; }
 @media (max-width: 1000px) { .today-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .today-grid { grid-template-columns: minmax(0, 1fr); } .app-nav a { min-width: 0; flex: 1; padding-inline: 4px; } }
+
+.instagram-preview { margin-block: 0.75rem; }
+.instagram-preview iframe { display: block; width: 100%; max-width: 28rem; height: 32rem; border: 0; margin-block-start: 0.5rem; }

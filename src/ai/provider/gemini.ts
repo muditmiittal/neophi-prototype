@@ -40,9 +40,12 @@ export function createGeminiProvider(): AIProvider {
   return {
     name: 'gemini',
     async analyse(input: AnalyseInput): Promise<MemoryAnalysis> {
-      const { raw } = await post<{ raw: RawAnalysis }>('/api/analyse', { input });
+      const { raw, withMedia } = await post<{ raw: RawAnalysis; withMedia: boolean }>('/api/analyse', { input });
       // Same guard as the mock: the model's text never becomes the user's words.
-      return guardAnalysis(raw, input, 'gemini');
+      const evidenceInput = input.dmMid && input.sourceState === 'available' && !withMedia
+        ? { ...input, sourceState: 'unsupported' as const }
+        : input;
+      return guardAnalysis(raw, evidenceInput, 'gemini');
     },
     async embed(text: string): Promise<number[]> {
       const { vector } = await post<{ vector: number[] }>('/api/embed', { text });

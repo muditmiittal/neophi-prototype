@@ -57,3 +57,12 @@ On 2026-11-20, typecheck, lint, tests and build passed on Windows. Vitest report
 - For a later public launch, the dashboard shows **Unpublished**, a disabled Publish button, and a Start verification action. The App Review draft is **Not submitted**. It lists eight new requests, including `publish_video`, `catalog_management` and Live Video API, and does not show `instagram_manage_messages` among those draft requests. Verify the permissions required for the actual public Instagram use case, narrow the submission to exercised permissions, and have the owner verify privacy, data deletion and business details before submitting.
 
 The dashboard subscription was changed with owner approval. The Windows launcher fix is local source. Relay deployments, credentials and other Meta permissions stay with the owner.
+
+## Offline demo and live acceptance
+
+1. Run `npm ci`, `npm run build` and `npm run serve`. Open `http://localhost:4173/app` and load the sample library. Open a memory and check its reason, evidence and suggestions. Visit Today, Search and Projects. Repeat at a phone viewport.
+2. Open Capture and save a public Instagram Reel URL with a reason. In the memory detail, open the optional Instagram preview. Instagram controls embed availability. Previewing a link does not supply evidence for analysis.
+3. Use `npm test` to exercise signed captures, note association, relay media and the guarded analysis response for attached or missing media. Run the local server separately on port 8787 for inbox and diagnostics. The sample demo can run without credentials.
+4. After the owner approves live access, use the parent app and one tester-owned Reel. Verify the supported Meta messaging attachment or message lookup and record only status, MIME and byte count. Confirm the exact note in the app and confirm that the intended provider actually received video in the same analysis. If Meta returns HTML or the provider fails, demonstrate the caption and note fallback and keep the video acceptance check open.
+
+For laptop-off operation, run one consumer with provisioned inference on the approved always-on host. Persist capture and note events with stable IDs in a durable inbox before acknowledging relay items. Keep failed media fetches and inference retryable without duplicating saves. Stop the laptop poller before enabling the new consumer. For rollback, stop the new consumer before re-enabling the laptop poller.
