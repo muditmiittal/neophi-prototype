@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-ssr/
+.tmp/
+data/
+artifacts/
+SCREENSHOTS/
+*.zip
+.env
+.env.*
+*.pem
+*.key
