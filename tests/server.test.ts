@@ -1,6 +1,6 @@
 // End-to-end test of the server's Instagram path with no network and no Gemini: a real webhook body, a signed request,
 // a media file served by a local fake, the inbox, a late note, and the public-address lockdown.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -17,6 +17,7 @@ let cobalt: http.Server;
 let mediaPort = 0;
 let serverRef: http.Server;
 let dataDir = '';
+const VIDEO = Buffer.from('synthetic-video-fixture');
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 const sign = (body: string) => 'sha256=' + crypto.createHmac('sha256', SECRET).update(body).digest('hex');
@@ -32,6 +33,7 @@ beforeAll(async () => {
   process.env.NEOPHI_RELAY_TOKEN = RELAY;
   media = http.createServer((req, res) => {
     if (req.url?.startsWith('/page')) { res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<html>a reel page, not media</html>'); }
+    if (req.url === '/reel.mp4') { res.writeHead(200, { 'content-type': 'video/mp4' }); return res.end(VIDEO); }
     res.writeHead(200, { 'content-type': 'image/png' }); res.end(PNG);
   });
   await new Promise<void>((r) => media.listen(0, '127.0.0.1', r));
@@ -48,8 +50,13 @@ beforeAll(async () => {
   await new Promise<void>((r) => cobalt.listen(0, '127.0.0.1', r));
   process.env.NEOPHI_COBALT_URL = `http://127.0.0.1:${(cobalt.address() as AddressInfo).port}`;
   process.env.NEOPHI_COBALT_HOSTS = '127.0.0.1';
+  const previousKey = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = 'synthetic-test-key';
   // @ts-expect-error plain JavaScript module
-  const mod = await import('../server/index.mjs');
+  const mod = await import('../server/index.mjs').finally(() => {
+    if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previousKey;
+  });
   serverRef = mod.server as http.Server;
   await new Promise<void>((r) => serverRef.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(serverRef.address() as AddressInfo).port}`;
@@ -89,6 +96,33 @@ describe('Instagram webhook on the server', () => {
     const after = (await (await fetch(`${base}/api/inbox`)).json()).items as Array<Record<string, unknown>>;
     expect(after.find((i) => i.mid === 'm-1')).toBeUndefined();
   });
+  it('attaches downloaded video bytes only to analysis of the matching DM', async () => {
+    const note = 'Maa ke liye  🥞';
+    const share = shareBody('video-1', note).replace('/reel.png', '/reel.mp4');
+    await post('/webhooks/instagram', share, { 'x-hub-signature-256': sign(share) });
+    await sleep(400);
+    const actualFetch = globalThis.fetch;
+    const providerBodies: Array<{ contents: Array<{ parts: Array<{ text?: string; inlineData?: unknown }> }> }> = [];
+    const mock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (!String(url).startsWith('https://generativelanguage.googleapis.com/')) return actualFetch(url, init);
+      providerBodies.push(JSON.parse(String(init?.body)));
+      return Response.json({ candidates: [{ content: { parts: [{ text: '{}' }] } }] });
+    });
+    try {
+      for (const dmMid of ['video-1', 'other-message']) {
+        const response = await post('/api/analyse', JSON.stringify({ input: { dmMid, note, caption: 'Dosa recipe' } }));
+        expect(response.status).toBe(200);
+        expect((await response.json()).withMedia).toBe(dmMid === 'video-1');
+      }
+      const matchingParts = providerBodies[0].contents[0].parts;
+      expect(matchingParts[0].text).toContain(JSON.stringify(note));
+      expect(matchingParts.at(-1)?.inlineData).toEqual({ mimeType: 'video/mp4', data: VIDEO.toString('base64') });
+      expect(providerBodies[1].contents[0].parts).toHaveLength(1);
+    } finally {
+      mock.mockRestore();
+    }
+  });
+
   it('turns a note that arrives in a later delivery into a note event for the imported save', async () => {
     const body = shareBody('m-2');
     await post('/webhooks/instagram', body, { 'x-hub-signature-256': sign(body) });
