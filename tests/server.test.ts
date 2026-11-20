@@ -123,6 +123,19 @@ describe('Instagram webhook on the server', () => {
     }
   });
 
+  it('imports a share and its notes once across webhook retries', async () => {
+    const share = shareBody('m-retried', '  same words  ');
+    const note = JSON.stringify({ object: 'instagram', entry: [{ messaging: [{
+      sender: { id: 'u1' }, timestamp: 3000, message: { mid: 'm-retried-follow-up', text: '  same words  ' },
+    }] }] });
+    for (const body of [share, share, note, note]) await post('/webhooks/instagram', body, { 'x-hub-signature-256': sign(body) });
+    await sleep(400);
+    const { items } = await (await fetch(`${base}/api/inbox`)).json();
+    expect(items.filter((item: { mid?: string }) => item.mid === 'm-retried')).toHaveLength(1);
+    const notes = items.filter((item: { parentMid?: string }) => item.parentMid === 'm-retried');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].text).toBe('  same words  ');
+  });
   it('turns a note that arrives in a later delivery into a note event for the imported save', async () => {
     const body = shareBody('m-2');
     await post('/webhooks/instagram', body, { 'x-hub-signature-256': sign(body) });

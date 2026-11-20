@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { verifySignature, parseInstagramWebhook, extractTexts } from './meta.mjs';
+import { verifySignature, parseInstagramWebhook, extractTexts, instagramPermalink } from './meta.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(HERE, '..', 'dist');
@@ -122,6 +122,7 @@ function mediaParts(input) {
   const parts = [];
   const m = typeof input.imageDataUrl === 'string' ? /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(input.imageDataUrl) : null;
   if (m && m[2].length < 8_000_000) parts.push({ text: 'ATTACHED MEDIA (image the user uploaded):' }, { inlineData: { mimeType: m[1], data: m[2] } });
+  pruneMedia();
   const cached = input.dmMid ? mediaCache.get(String(input.dmMid)) : null;
   if (cached) parts.push({ text: `ATTACHED MEDIA (${cached.mime.startsWith('video') ? 'video' : 'image'} fetched from the Instagram share):` }, { inlineData: { mimeType: cached.mime, data: cached.b64 } });
   return parts;
@@ -146,9 +147,20 @@ async function embed(text) {
 const mediaCache = new Map(); // mid -> { mime, b64, at }, kept in memory for one hour
 const inboxFile = path.join(DATA_DIR, 'inbox.json');
 let inbox = [];
-try { inbox = JSON.parse(fs.readFileSync(inboxFile, 'utf8')); } catch { inbox = []; }
+try {
+  inbox = JSON.parse(fs.readFileSync(inboxFile, 'utf8')).map((item) => item.mediaFetch === 'pending' ? { ...item, mediaFetch: 'interrupted' } : item);
+} catch { inbox = []; }
 const saveInbox = () => {
-  try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(inboxFile, JSON.stringify(inbox.slice(-200))); } catch { /* the inbox is a convenience; a failed write must not stop capture */ }
+  try {
+    pruneInbox();
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const pending = inbox.filter((item) => !item.taken);
+    const taken = inbox.filter((item) => item.taken).slice(-200);
+    const tmp = `${inboxFile}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify([...taken, ...pending]), { mode: 0o600 });
+    fs.renameSync(tmp, inboxFile);
+    return true;
+  } catch { return false; }
 };
 const lastBySender = new Map(); // senderId -> { itemId, at }
 const NOTE_WINDOW_MS = 10 * 60 * 1000;
@@ -205,8 +217,8 @@ function handleText(t) {
   const last = lastBySender.get(t.senderId);
   if (!last || Date.now() - last.at > NOTE_WINDOW_MS) return false;
   const item = inbox.find((i) => i.id === last.itemId);
-  if (!item) return false;
-  if (!item.taken && !item.note) item.note = t.text;
+  if (!item || inbox.some((i) => i.noteMid === t.mid || i.id === `${t.mid}:note`)) return false;
+  if (!item.taken && !item.offered && !item.note) { item.note = t.text; item.noteMid = t.mid; }
   else inbox.push({ id: `${t.mid}:note`, type: 'note', parentMid: item.mid, text: t.text, receivedAt: new Date().toISOString(), taken: false });
   saveInbox();
   return true;
@@ -232,8 +244,9 @@ function recordShape(c, item) {
 }
 
 async function handleCapture(c, body) {
+  if (inbox.some((i) => i.mid === c.mid)) return;
   Object.assign(c, rawAttachment(body, c.mid));
-  const item = { id: c.mid + ':' + (inbox.length + 1), mid: c.mid, receivedAt: new Date().toISOString(), kind: c.kind, title: c.title, note: c.note, ladder: c.ladder, hasMediaLink: Boolean(c.mediaUrl), mediaFetch: c.mediaUrl ? 'pending' : 'no_link', taken: false };
+  const item = { id: c.mid + ':' + (inbox.length + 1), mid: c.mid, receivedAt: new Date().toISOString(), kind: c.kind, title: c.title, note: c.note, noteMid: c.noteMid, permalink: instagramPermalink(c.mediaUrl), ladder: c.ladder, hasMediaLink: Boolean(c.mediaUrl), mediaFetch: c.mediaUrl ? 'pending' : 'no_link', taken: false };
   inbox.push(item); lastBySender.set(c.senderId, { itemId: item.id, at: Date.now() }); saveInbox(); stats.captures++;
   if (c.mediaUrl) {
     try {
@@ -261,7 +274,14 @@ function relayAuthorised(req) {
   if (!RELAY_TOKEN || got.length !== RELAY_TOKEN.length) return false;
   return crypto.timingSafeEqual(Buffer.from(got), Buffer.from(RELAY_TOKEN));
 }
-const readyItems = () => inbox.filter((i) => !i.taken && i.mediaFetch !== 'pending' && (i.type === 'note' || i.note || Date.now() - Date.parse(i.receivedAt) >= READY_AFTER_MS));
+const readyItems = () => {
+  pruneInbox();
+  const ready = (item) => item.mediaFetch !== 'pending' && (item.note || Date.now() - Date.parse(item.receivedAt) >= READY_AFTER_MS);
+  const awaitingParent = new Set(inbox.filter((item) => item.mid && !item.taken && !ready(item)).map((item) => item.mid));
+  const items = inbox.filter((item) => !item.taken && (item.type === 'note' ? !awaitingParent.has(item.parentMid) : ready(item)));
+  for (const item of items) item.offered = true;
+  return items;
+};
 
 let relayBusy = false;
 const relayState = { lastPoll: 'never', pulled: 0, mediaPulled: 0 };
@@ -282,14 +302,16 @@ async function relayPull() {
             if (m.ok) { const j = await m.json(); mediaCache.set(it.mid, { mime: j.mime, b64: j.b64, at: Date.now() }); pruneMedia(); relayState.mediaPulled++; }
           } catch { /* the save still imports; it is analysed from the caption */ }
         }
-        inbox.push({ ...it, taken: false });
+        const mediaFetch = it.mediaFetch === 'ok' && !mediaCache.has(it.mid) ? 'relay_media_unavailable' : it.mediaFetch;
+        inbox.push({ ...it, taken: false, mediaFetch });
         relayState.pulled++;
       }
       done.push(it.id);
     }
     if (done.length) {
-      saveInbox();
-      await fetch(`${RELAY_URL}/relay/ack`, { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ ids: done }), signal: AbortSignal.timeout(15_000) });
+      if (!saveInbox()) { relayState.lastPoll = 'storage_error'; return; }
+      const ack = await fetch(`${RELAY_URL}/relay/ack`, { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ ids: done }), signal: AbortSignal.timeout(15_000) });
+      if (!ack.ok) { relayState.lastPoll = `ack_http_${ack.status}`; return; }
     }
     relayState.lastPoll = 'ok';
   } catch { relayState.lastPoll = 'error'; } finally { relayBusy = false; }
@@ -332,13 +354,14 @@ export const server = http.createServer(async (req, res) => {
       if (url.pathname === '/relay/shapes' && req.method === 'GET') return send(res, 200, { shapes });
       if (url.pathname === '/relay/inbox' && req.method === 'GET') return send(res, 200, { items: readyItems() });
       if (url.pathname.startsWith('/relay/media/') && req.method === 'GET') {
+        pruneMedia();
         const c = mediaCache.get(decodeURIComponent(url.pathname.slice('/relay/media/'.length)));
         return c ? send(res, 200, { mime: c.mime, b64: c.b64 }) : send(res, 404, { error: 'gone' });
       }
       if (url.pathname === '/relay/ack' && req.method === 'POST') {
         const { ids } = JSON.parse((await readBody(req)).toString('utf8'));
         let n = 0;
-        for (const i of inbox) if (Array.isArray(ids) && ids.includes(i.id) && !i.taken) { i.taken = true; i.title = null; i.note = null; i.text = null; mediaCache.delete(i.mid); n++; } // the laptop holds it now: this host keeps no words and no media
+        for (const i of inbox) if (Array.isArray(ids) && ids.includes(i.id) && !i.taken) { i.taken = true; i.title = null; i.note = null; i.text = null; i.permalink = null; mediaCache.delete(i.mid); n++; } // the laptop holds it now: this host keeps no words and no media
         pruneInbox(); saveInbox();
         return send(res, 200, { acknowledged: n });
       }
@@ -373,7 +396,7 @@ export const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/inbox/ack' && req.method === 'POST') {
       const { ids } = JSON.parse((await readBody(req)).toString('utf8'));
       let n = 0;
-      for (const i of inbox) if (Array.isArray(ids) && ids.includes(i.id) && !i.taken) { i.taken = true; i.title = null; i.note = null; i.text = null; n++; } // the app now holds the save: the server keeps no words of it
+      for (const i of inbox) if (Array.isArray(ids) && ids.includes(i.id) && !i.taken) { i.taken = true; i.title = null; i.note = null; i.text = null; i.permalink = null; n++; } // the app now holds the save: the server keeps no words of it
       pruneInbox();
       saveInbox();
       return send(res, 200, { acknowledged: n }, origin);
@@ -387,12 +410,12 @@ export const server = http.createServer(async (req, res) => {
       stats.webhookPosts++;
       const raw = await readBody(req);
       if (!verifySignature(raw, req.headers['x-hub-signature-256'], APP_SECRET)) { stats.bad++; return send(res, 401, { error: 'bad signature' }); }
-      const captures = parseInstagramWebhook(JSON.parse(raw.toString('utf8')));
-      console.log(`webhook: ${captures.length} capture(s)`); // counts only: never log notes or urls
       const body = JSON.parse(raw.toString('utf8'));
-      const attached = new Set(captures.filter((c) => c.note).map((c) => c.note));
+      const captures = parseInstagramWebhook(body);
+      console.log(`webhook: ${captures.length} capture(s)`); // counts only: never log notes or urls
+      const attached = new Set(captures.map((c) => c.noteMid));
       for (const c of captures) void handleCapture(c, body); // answer Meta fast; fetching and replying continue in the background
-      for (const t of extractTexts(body)) if (!attached.has(t.text)) handleText(t);
+      for (const t of extractTexts(body)) if (!attached.has(t.mid)) handleText(t);
       return send(res, 200, { received: captures.length });
     }
     if (url.pathname === '/replay' && req.method === 'POST') {

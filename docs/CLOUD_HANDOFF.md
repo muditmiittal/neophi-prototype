@@ -1,6 +1,6 @@
 # Neophi buildathon handoff
 
-Open the prototype root in Codex Cloud or Claude Code. Read `AGENTS.md`, then the relevant skills in `.agents/skills/`. The local snapshot is `muditmiittal/neophi-prototype` on `buildathon-prototype`. The partner repo is [Ramitphi/neophii](https://github.com/Ramitphi/neophii), with default branch `main`. Compare the exact commits and ask the partner for any unpublished work or integration constraints. The partner implementation has not been combined with this snapshot.
+Open the prototype root in Codex Cloud or Claude Code. Read `AGENTS.md`, then the relevant skills in `.agents/skills/`. The local snapshot is `muditmiittal/neophi-prototype` on `buildathon-prototype`. The partner repo is [Ramitphi/neophii](https://github.com/Ramitphi/neophii), with default branch `main`. The private integration started from `b543e4953379af2d6fa312c4d86388b49c1f0443` and used Ramit's published `46f6f2e131fde13e79056f299afa80dabbb95879`.
 
 ## Run and verify
 
@@ -66,3 +66,11 @@ The dashboard subscription was changed with owner approval. The Windows launcher
 4. After the owner approves live access, use the parent app and one tester-owned Reel. Verify the supported Meta messaging attachment or message lookup and record only status, MIME and byte count. Confirm the exact note in the app and confirm that the intended provider actually received video in the same analysis. If Meta returns HTML or the provider fails, demonstrate the caption and note fallback and keep the video acceptance check open.
 
 For laptop-off operation, run one consumer with provisioned inference on the approved always-on host. Persist capture and note events with stable IDs in a durable inbox before acknowledging relay items. Keep failed media fetches and inference retryable without duplicating saves. Stop the laptop poller before enabling the new consumer. For rollback, stop the new consumer before re-enabling the laptop poller.
+
+## Private integration
+
+Today includes Ramit's category browsing with counts and touch-sized controls. All activity keeps due reminders, explainable picks, recent arrivals and note completion. The prototype's evidence lanes, offline storage and signed DM relay remain the basis for the tester demo.
+
+A DM can open the opt-in Instagram preview when Meta supplies an HTTPS public Reel or post permalink. The app receives the canonical permalink without the query string. Signed CDN URLs stay server-side. Delivery retries preserve one save per share message ID and one follow-up per note delivery ID. The consumer saves its inbox before acknowledging the relay. A missing or expired attachment uses the caption and note when available.
+
+The in-memory partner baseline passed typecheck, lint, build and 13 tests. Its Firebase and persistent-media architecture remains a reference for the separately approved always-on service. No cloud database or live inference credentials are needed for the offline demo.

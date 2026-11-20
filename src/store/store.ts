@@ -206,6 +206,7 @@ function platformOf(url?: string): Platform {
 
 function titleFor(input: CaptureInput, platform: Platform): string {
   if (input.sharedTitle) return input.sharedTitle;
+  if (input.dm?.caption?.trim()) return input.dm.caption.trim().split(/\r?\n/)[0].slice(0, 80);
   if (input.dm) return input.dm.kind === 'ig_reel' ? 'Reel shared by DM' : input.dm.kind === 'ig_post' ? 'Post shared by DM' : 'Shared by DM';
   if (input.upload) return input.upload.fileName.replace(/\.[a-z0-9]+$/i, '').slice(0, 60) || 'Upload';
   try {
@@ -227,7 +228,7 @@ export function capture(input: CaptureInput): CaptureResult {
   const url = input.url ? normaliseUrl(input.url) : undefined;
   const typed = input.note.trim().length ? input.note : null;
 
-  if (url && state.settings.features.duplicates) {
+  if (url && !input.dm && state.settings.features.duplicates) {
     const existing = state.memories.find((m) => m.source.url && normaliseUrl(m.source.url) === url);
     if (existing) {
       patchMemory(existing.id, (m) => ({
@@ -248,7 +249,7 @@ export function capture(input: CaptureInput): CaptureResult {
   const sourceState: SourceAccessState = input.upload ? 'user_provided' : input.dm?.live && input.dm.mediaFetch === 'ok' ? 'available' : 'unsupported';
   const retention = state.settings.retentionDays;
   const ledger: LedgerEntry[] = [];
-  if (url) ledger.push(entry('you', 'You saved this link. It was kept, not fetched.', now));
+  if (url && !input.dm) ledger.push(entry('you', 'You saved this link. It was kept, not fetched.', now));
   if (input.dm)
     ledger.push(
       entry(
@@ -270,7 +271,7 @@ export function capture(input: CaptureInput): CaptureResult {
     title: titleFor(input, platform),
     sample: false,
     source: { sharedText: input.sharedText, channel: input.dm ? 'dm' : (input.channel ?? (input.upload ? 'upload' : 'link')), platform, url, caption: input.dm?.caption ?? undefined, externalId: input.dm?.mid, live: input.dm?.live },
-    mediaKind: input.upload?.mediaKind ?? 'none',
+    mediaKind: input.upload?.mediaKind ?? (input.dm?.kind === 'ig_reel' ? 'video' : 'none'),
     thumb: input.upload?.thumb,
     thumbExpiresAt: input.upload && retention ? new Date(Date.now() + retention * 86_400_000).toISOString() : null,
     durationSec: input.upload?.durationSec,
@@ -295,14 +296,16 @@ export function capture(input: CaptureInput): CaptureResult {
 }
 
 /** A note typed in the DM thread after the share arrived: kept exactly as sent, never merged or rewritten. */
-export function attachDmNote(mid: string, text: string): boolean {
+export function attachDmNote(mid: string, text: string, deliveryId?: string): boolean {
   const m = state.memories.find((x) => x.source.externalId === mid);
   if (!m) return false;
+  if (deliveryId && m.dmNoteIds?.includes(deliveryId)) return true;
   const now = new Date().toISOString();
   const first = !m.note;
   patchMemory(m.id, (x) => ({
     ...x,
     note: x.note ?? text,
+    dmNoteIds: deliveryId ? [...(x.dmNoteIds ?? []), deliveryId] : x.dmNoteIds,
     extraNotes: x.note ? [...x.extraNotes, { text, at: now }] : x.extraNotes,
     ledger: [...x.ledger, entry('you', first ? 'Your note arrived in the DM thread. Stored exactly as sent.' : 'Another note arrived in the DM thread. Added; nothing was replaced.', now)],
   }));
@@ -310,9 +313,13 @@ export function attachDmNote(mid: string, text: string): boolean {
   return true;
 }
 
+const activeAnalyses = new Map<string, symbol>();
+
 export async function analyseMemory(id: string, local?: LocalImageFacts, imageDataUrl?: string) {
   const m = state.memories.find((x) => x.id === id);
   if (!m || m.private) return;
+  const run = Symbol();
+  activeAnalyses.set(id, run);
   patchMemory(id, (x) => ({ ...x, status: 'analysing' }));
   const input: AnalyseInput = {
     sampleId: m.sample ? m.id : undefined,
@@ -343,11 +350,15 @@ export async function analyseMemory(id: string, local?: LocalImageFacts, imageDa
       analysis = await getProvider('mock').analyse(fallbackInput);
     }
   } catch {
+    if (activeAnalyses.get(id) !== run) return;
+    activeAnalyses.delete(id);
     patchMemory(id, (x) => ({ ...x, status: 'error', ledger: [...x.ledger, entry('neophi', 'Analysis failed. Your link and note are safe; you can try again.')] }));
     return;
   }
+  if (activeAnalyses.get(id) !== run) return;
+  activeAnalyses.delete(id);
   const current = state.memories.find((x) => x.id === id);
-  if (!current) return; // deleted while analysing
+  if (!current || current.private) return;
   const readable = analysis.source_access_state === 'available' || analysis.source_access_state === 'user_provided';
   extra.push(
     entry('ai', readable ? `AI described the source: ${analysis.observed_objects.length} observations, each tied to evidence or marked not sure (${analysis.provider} provider).` : m.source.channel === 'dm' && m.source.caption ? 'Analysis used the caption and any note you sent. Shared media was unavailable for this analysis.' : 'The source was not read, so nothing about it was recorded.'),
@@ -406,6 +417,7 @@ export function undoLedger(memoryId: string, entryId: string) {
 export const restoreSuggestions = (id: string) => patchMemory(id, (m) => ({ ...m, suggestionsRemoved: false, ledger: [...m.ledger, entry('you', 'You brought the AI suggestions back.')] }));
 
 export function setPrivate(id: string, isPrivate: boolean) {
+  if (isPrivate) activeAnalyses.delete(id);
   patchMemory(id, (m) =>
     isPrivate
       ? { ...m, private: true, analysis: null, status: 'ready', categoryId: null, momentPins: [], ledger: [...m.ledger, entry('you', 'You made this private. The analysis was deleted and AI is off for it.')] }

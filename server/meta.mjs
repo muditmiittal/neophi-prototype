@@ -12,6 +12,15 @@ export function verifySignature(rawBody, header, appSecret) {
 }
 
 const str = (v) => (typeof v === 'string' && v.length ? v : null);
+/** A public post permalink can be shown in the app. CDN URLs stay server-side. */
+export function instagramPermalink(value) {
+  if (!value || !URL.canParse(value)) return null;
+  const url = new URL(value);
+  if (url.protocol !== 'https:' || !['instagram.com', 'www.instagram.com'].includes(url.host)) return null;
+  const post = /^\/(reel|p)\/([\w-]+)\/?$/.exec(url.pathname);
+  return post ? `https://www.instagram.com/${post[1]}/${post[2]}/` : null;
+}
+
 const NOTE_WINDOW_MS = 10 * 60 * 1000;
 
 export function parseInstagramWebhook(body) {
@@ -27,7 +36,7 @@ export function parseInstagramWebhook(body) {
     if (atts.length === 0) {
       const text = str(m.text);
       const target = [...out].reverse().find((c) => c.senderId === senderId && c.note === null && timestamp - c.timestamp >= 0 && timestamp - c.timestamp <= NOTE_WINDOW_MS);
-      if (text && target) target.note = text;
+      if (text && target) { target.note = text; target.noteMid = m.mid; }
       continue;
     }
     for (const a of atts) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_DM_PAYLOADS, parseInstagramWebhook } from '../src/lib/metaCapture';
 // @ts-expect-error plain JavaScript module used by the local server
-import { parseInstagramWebhook as serverParse, verifySignature } from '../server/meta.mjs';
+import { parseInstagramWebhook as serverParse, verifySignature, instagramPermalink } from '../server/meta.mjs';
 import crypto from 'node:crypto';
 
 describe('Instagram DM parsing', () => {
@@ -14,6 +14,12 @@ describe('Instagram DM parsing', () => {
     expect(c.length).toBe(1);
     expect(c[0].note).toBe('Goa trip, day 2 subah');
     expect(c[0].ladder).toBe('media_link_present');
+  });
+  it('keeps only canonical HTTPS Instagram post URLs for previews', () => {
+    expect(instagramPermalink('https://instagram.com/reel/ABC_123/?igsh=example')).toBe('https://www.instagram.com/reel/ABC_123/');
+    expect(instagramPermalink('https://lookaside.fbsbx.com/ig_messaging_cdn/?signature=example')).toBeNull();
+    expect(instagramPermalink('https://instagram.com.example.org/reel/ABC_123/')).toBeNull();
+    expect(instagramPermalink('http://www.instagram.com/reel/ABC_123/')).toBeNull();
   });
   it('ignores bodies that are not Instagram messaging', () => {
     expect(parseInstagramWebhook({ object: 'page', entry: [] })).toEqual([]);

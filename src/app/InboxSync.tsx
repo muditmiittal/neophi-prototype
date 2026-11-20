@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { GEMINI_SERVER } from '../ai/provider';
-import { attachDmNote, capture, getState } from '../store/store';
+import { attachDmNote, capture, getState, storageFailed } from '../store/store';
 
 interface InboxItem {
   id: string;
@@ -12,6 +12,7 @@ interface InboxItem {
   note?: string | null;
   text?: string;
   hasMediaLink?: boolean;
+  permalink?: string | null;
   mediaFetch?: string;
 }
 
@@ -31,17 +32,17 @@ export function InboxSync({ notify }: { notify: (text: string) => void }) {
         let imported = 0;
         for (const it of items) {
           if (it.type === 'note' && it.parentMid && it.text) {
-            if (attachDmNote(it.parentMid, it.text)) taken.push(it.id);
+            if (attachDmNote(it.parentMid, it.text, it.id)) taken.push(it.id);
             else if (!getState().memories.some((m) => m.source.externalId === it.parentMid)) taken.push(it.id); // the memory was deleted: drop the note
             continue;
           }
           if (!it.mid || !it.kind) continue;
           const settings = getState().settings;
-          capture({ note: it.note ?? '', noteLanguage: settings.noteLanguage, chosenIntent: null, isPrivate: false, channel: 'dm', dm: { mid: it.mid, kind: it.kind, caption: it.title ?? null, hasMediaLink: Boolean(it.hasMediaLink), live: true, mediaFetch: it.mediaFetch } });
+          const result = capture({ url: it.permalink ?? undefined, note: it.note ?? '', noteLanguage: settings.noteLanguage, chosenIntent: null, isPrivate: false, channel: 'dm', dm: { mid: it.mid, kind: it.kind, caption: it.title ?? null, hasMediaLink: Boolean(it.hasMediaLink), live: true, mediaFetch: it.mediaFetch } });
           taken.push(it.id);
-          imported++;
+          if (!result.duplicate) imported++;
         }
-        if (taken.length) {
+        if (taken.length && !storageFailed) {
           await fetch(`${GEMINI_SERVER}/api/inbox/ack`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: taken }) });
           if (imported) notify(imported === 1 ? 'A new save arrived from Instagram.' : `${imported} new saves arrived from Instagram.`);
         }

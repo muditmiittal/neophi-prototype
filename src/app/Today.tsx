@@ -27,7 +27,14 @@ function AddWords({ memory }: { memory: Memory }) {
 }
 
 export function Today() {
-  const { memories } = useStore();
+  const { memories, categories } = useStore();
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const counts = new Map<string, number>();
+  for (const memory of memories) {
+    if (!memory.private && memory.categoryId) counts.set(memory.categoryId, (counts.get(memory.categoryId) ?? 0) + 1);
+  }
+  const browseCategories = categories.filter((category) => counts.has(category.id));
+  const selected = browseCategories.find((category) => category.id === categoryId);
   const now = useNow();
   const picks = resurface(memories, now);
   const due = memories.filter((m) => dueToday(m.reminderAt, now));
@@ -42,6 +49,16 @@ export function Today() {
   </article>;
   return <div className="today">
     <header className="page-top"><p className="label">A little space to remember</p><h1>Today</h1><p>Pick up a thought when it is useful to you.</p><Link className="btn btn-primary" to="/app/capture">Save something</Link></header>
+    {browseCategories.length > 0 && <div className="today-filters" role="group" aria-label="Browse Today by category">
+      <button className="btn btn-small" type="button" aria-pressed={!selected} onClick={() => setCategoryId(null)}>All activity</button>
+      {browseCategories.map((category) => <button className="btn btn-small" key={category.id} type="button" aria-pressed={selected?.id === category.id} onClick={() => setCategoryId(category.id)}>
+        {category.name} <span className="tnum">{counts.get(category.id)}</span>
+      </button>)}
+    </div>}
+    {selected ? <section aria-labelledby="today-category-title">
+      <h2 id="today-category-title">{selected.name}</h2>
+      <div className="today-grid">{memories.filter((m) => !m.private && m.categoryId === selected.id).map((m) => card(m))}</div>
+    </section> : <>
     {now.getDay() === 0 && <section className="index-card weekly"><h2>Weekly recap</h2><p>{recap.saved} saved this week · {recap.projects} projects touched</p><p className="hint">Your own saves, Monday to now. Sample saves are excluded.</p>{recap.picks.length > 0 && <><h3>Back to these</h3><ul>{recap.picks.map(({ memory, reasons }) => <li key={memory.id}><Link to={`/app/m/${memory.id}`}>{memory.title}</Link> — {reasons[0]}</li>)}</ul></>}</section>}
     {due.length > 0 && <section aria-labelledby="due-title"><h2 id="due-title">Due now</h2><div className="today-grid">{due.map((m) => card(m, <><p className="hint">Reminder: {new Date(m.reminderAt!).toLocaleString('en-GB')}</p><button className="btn btn-small" onClick={() => setReminder(m.id, null)}>Done with reminder</button></>))}</div></section>}
     {picks.length > 0 && <section aria-labelledby="back-title"><h2 id="back-title">Back to this</h2><div className="today-grid">{picks.map(({ memory: m, reasons }) => card(m, <>
@@ -53,5 +70,6 @@ export function Today() {
     {arrived.length > 0 && <section aria-labelledby="arrived-title"><h2 id="arrived-title">Just arrived</h2><div className="today-grid">{arrived.map((m) => card(m, <p className="hint">From {m.source.channel === 'dm' ? 'Instagram DM' : 'the share sheet'}{!m.note && ' · No note added'}</p>))}</div></section>}
     {needs.length > 0 && <section aria-labelledby="words-title"><h2 id="words-title">Needs your words</h2><div className="today-grid">{needs.map((m) => card(m, <AddWords memory={m} />))}</div></section>}
     {!due.length && !picks.length && !arrived.length && !needs.length && <p className="index-card weekly">Nothing needs your attention today; save a thought whenever one comes along.</p>}
+    </>}
   </div>;
 }

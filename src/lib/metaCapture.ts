@@ -17,6 +17,7 @@ export interface DmCapture {
   mediaUrl: string | null;
   /** Text the same person sent within 10 minutes after the share. Treated as their note. */
   note: string | null;
+  noteMid?: string;
   /** Which rung of the fallback ladder applies before any download is tried. */
   ladder: 'media_link_present' | 'note_and_caption_only' | 'text_only';
 }
@@ -39,7 +40,7 @@ export function parseInstagramWebhook(body: unknown): DmCapture[] {
       // A plain text message: the note for the share this person sent just before, if any.
       const text = str(message.text);
       const target = [...out].reverse().find((c) => c.senderId === senderId && c.note === null && timestamp - c.timestamp >= 0 && timestamp - c.timestamp <= NOTE_WINDOW_MS);
-      if (text && target) target.note = text;
+      if (text && target) { target.note = text; target.noteMid = message.mid; }
       continue;
     }
     for (const att of attachments) {

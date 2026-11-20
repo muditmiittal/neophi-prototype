@@ -1433,6 +1433,9 @@
 .today { max-width: 1160px; margin: auto; }
 .today > section { margin-block: 28px; }
 .today h2 { font-family: var(--display); margin-bottom: 14px; }
+.today-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.today-filters .btn { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.today-filters .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .today-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .today-card { padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-wrap: anywhere; }
 .today-card h3 { font-size: 1.25rem; }

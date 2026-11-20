@@ -60,6 +60,7 @@ export interface Memory {
   note: string | null;
   /** Notes from saving the same link again (duplicate detection). */
   extraNotes: { text: string; at: string }[];
+  dmNoteIds?: string[];
   noteLanguage: 'en' | 'hi' | 'hinglish';
   /** One-tap reason. Stored on its own, never mixed into `note`. */
   chosenIntent: IntentChip | null;
