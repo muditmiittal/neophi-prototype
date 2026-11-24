@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Icon } from '../components/Icon';
 import { Link } from 'react-router-dom';
 import { dueToday, resurface, weeklyRecap } from '../lib/resurface';
 import { addOwnNote, doneResurface, setReminder, snoozeResurface, useStore } from '../store/store';
 import type { Memory } from '../store/types';
+import { hasReelCover, ReelMedia } from './ReelMedia';
 import { NoteInput } from './NoteInput';
 
 export function useNow() {
@@ -42,9 +44,14 @@ export function Today() {
   const needs = memories.filter((m) => !m.note?.trim());
   const recap = weeklyRecap(memories, now);
   const card = (m: Memory, content?: React.ReactNode) => <article className="index-card today-card" key={m.id}>
+    {hasReelCover(m) && <ReelMedia memory={m} />}
     <p className="hint">Saved {new Date(m.createdAt).toLocaleDateString('en-GB')}{m.sample && <span className="stamp">Sample</span>}{m.private && ' · Private'}</p>
     <h3><Link to={`/app/m/${m.id}`}>{m.title}</Link></h3>
-    {m.note && <p className="today-note">{m.note}</p>}{m.extraNotes.map((note, index) => <p className="today-note" key={index}>{note.text}</p>)}
+    {(m.note || m.extraNotes.length > 0) && <div className="today-words">
+      <span className="label">Your words</span>
+      {m.note && <p className="today-note">{m.note}</p>}
+      {m.extraNotes.map((note, index) => <p className="today-note" key={index}>{note.text}</p>)}
+    </div>}
     {content}
   </article>;
   return <div className="today">
@@ -65,7 +72,7 @@ export function Today() {
       <p className="today-reason">{reasons[0]}</p>
       <details><summary>Why this came back</summary><ul>{reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul><p className="hint">Daily selection from stored dates, projects, categories and pins. Earlier opens were not tracked before this update.</p></details>
       <Link className="today-ledger" to={`/app/m/${m.id}#ledger`}>What happened here · {m.ledger.at(-1)?.what ?? 'Saved on this device'} → Ledger</Link>
-      <div className="today-actions"><button className="btn btn-small btn-quiet" onClick={() => snoozeResurface(m.id)}>Not now</button><button className="btn btn-small" onClick={() => doneResurface(m.id)}>Done</button></div>
+      <div className="today-actions"><button className="btn btn-small btn-quiet" onClick={() => snoozeResurface(m.id)}><Icon name="clock" /> Not now</button><button className="btn btn-small" onClick={() => doneResurface(m.id)}><Icon name="check" /> Done</button></div>
     </>))}</div></section>}
     {arrived.length > 0 && <section aria-labelledby="arrived-title"><h2 id="arrived-title">Just arrived</h2><div className="today-grid">{arrived.map((m) => card(m, <p className="hint">From {m.source.channel === 'dm' ? 'Instagram DM' : 'the share sheet'}{!m.note && ' · No note added'}</p>))}</div></section>}
     {needs.length > 0 && <section aria-labelledby="words-title"><h2 id="words-title">Needs your words</h2><div className="today-grid">{needs.map((m) => card(m, <AddWords memory={m} />))}</div></section>}
